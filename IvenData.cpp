@@ -50,6 +50,27 @@ void IvenData::add(const char* key, int value)
     concat(value);
 }
 
+void IvenData::add(const char* key, boolean value)
+{
+    bool isFirst = true;
+    if (len == 0)
+    {
+        concat("{\"data\":[{"); // }]}
+        isFirst = false;
+    }
+
+    if (isFirst)
+    {
+        concat(',');
+    }
+
+    concat('"');
+    concat(key);
+    concat("\":"); 
+    if (value) concat("true");
+    else concat("false");
+}
+
 char* IvenData::print()
 {
     return &buffer[10];

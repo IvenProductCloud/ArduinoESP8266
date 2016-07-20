@@ -6,6 +6,7 @@
 #define PROJECT_IVENDATA_H
 
 #include <WString.h>
+#include <Arduino.h>
 
 class IvenData : private String
 {
@@ -13,6 +14,7 @@ public:
     IvenData();
     void add(const char* key, const char* value);
     void add(const char* key, int value);
+    void add(const char* key, boolean value);
     char* print();
     void clear();
     inline unsigned int length(void) const {return len;}

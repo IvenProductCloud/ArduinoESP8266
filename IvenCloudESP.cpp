@@ -11,78 +11,86 @@
 
 // Checks if ESP software serial response contains OK
 
-bool isOk(SoftwareSerial& _client, char* jSonBuffer) {
+bool isOk(SoftwareSerial& client, char* buffer) 
+{
   bool check = false;
   int i = 0;
   long startTime = millis();
   while (millis() - startTime < 5000) { 
-    if (_client.available()) {
-      jSonBuffer[i] = _client.read();
-      if (jSonBuffer[i - 1] == 'O' && jSonBuffer[i] == 'K') {
+    if (client.available()) {
+      buffer[i] = client.read();
+      if (buffer[i - 1] == 'O' && buffer[i] == 'K') {
         check = true;
         break;
       }
       i++;
     }
   }
-  while (_client.available()) _client.read();
-  for (i = 0; i < 128; i++) jSonBuffer[i] = '\0';
+
+  buffer[i + 1] = '\0';
+
+  while (client.available()) 
+    client.read();
+
   return check;
 }
 
 //ARDUINO AND ESP8266 RESTART FUNCTION
-void returnSetup(SoftwareSerial& _client) {
+void returnSetup(SoftwareSerial& client) 
+{
   delay(1000);
-  Serial.println(F("Reseting"));
-  _client.println(F("AT+RST"));
+  client.println(F("AT+RST"));
   long startTime = millis();
   while (millis() - startTime < 5000) {
-    if (_client.available()) Serial.print((char)_client.read());
+    if (client.available()) 
+      client.read();
   }
   startTime = millis();
+
   while (millis() - startTime < 5000);
+
   soft_restart();
 }
 
 //SERVER RESPONSE HANDLER FUNCTION
-void responseHandle(SoftwareSerial& _client, char* jSonBuffer) {
+void handleResponse(SoftwareSerial& client, char* buffer) 
+{
   int i = 0;
   int j;
   int index;
   long startTime = millis();
   while (millis() - startTime < 15000) {
-    if (_client.available()) {
-      jSonBuffer[i] = _client.read();
-      if (jSonBuffer[i - 2] == '2' && jSonBuffer[i - 1] == '0' && jSonBuffer[i] == '0') {
+    if (client.available()) {
+      buffer[i] = client.read();
+      if (buffer[i - 2] == '2' && buffer[i - 1] == '0' && buffer[i] == '0') {
         i = 0;
-        while (!(jSonBuffer[i - 4] == '\r' && jSonBuffer[i - 3] == '\n' && jSonBuffer[i - 2] == '\r' && jSonBuffer[i - 1] == '\n')) {
-          if (_client.available()) {
-            jSonBuffer[i] = _client.read();
-            jSonBuffer[i + 1] = '\0';
+        while (!(buffer[i - 4] == '\r' && buffer[i - 3] == '\n' && buffer[i - 2] == '\r' && buffer[i - 1] == '\n')) {
+          if (client.available()) {
+            buffer[i] = client.read();
+            buffer[i + 1] = '\0';
             i++;
             i %= 120;
           }
         }
         i = 0;
-        jSonBuffer[4] = '\0';
-        jSonBuffer[5] = '\0';
+        buffer[4] = '\0';
+        buffer[5] = '\0';
         while (i != 4) {
-          if (_client.available()) {
-            jSonBuffer[i] = _client.read();
+          if (client.available()) {
+            buffer[i] = client.read();
             i++;
           }
         }
-        j = strtoul(jSonBuffer, 0, 16);
+        j = strtoul(buffer, 0, 16);
         i = 0;
         while (i != j) {
-          if (_client.available()) {
-            jSonBuffer[i] = _client.read();
+          if (client.available()) {
+            buffer[i] = client.read();
             i++;
           }
         }
-        for (index = j; index < 128; index++) {
-          jSonBuffer[j] = '\0';
-        }
+
+        buffer[j] = '\0';
         break;
       }
       i++;
@@ -93,15 +101,16 @@ void responseHandle(SoftwareSerial& _client, char* jSonBuffer) {
 
 
 //API-KEY PARSER FUNCTION
-bool apiParse(char* jSonBuffer) {
+bool parseApiKey(char* buffer) 
+{
+  //Find API-KEY
   int i = 0;
-  int j = 0;
   int index;
   int arrayIndex = 0;
   bool api = false;
   long startTime = millis();
   while (millis() - startTime < 5000) {
-    if (jSonBuffer[i] == 'a' && jSonBuffer[i + 1] == 'p' && jSonBuffer[i + 2] == 'i' && jSonBuffer[i + 3] == '_' && jSonBuffer[i + 4] == 'k' && jSonBuffer[i + 5] == 'e' && jSonBuffer[i + 6] == 'y') {
+    if (buffer[i] == 'a' && buffer[i + 1] == 'p' && buffer[i + 2] == 'i' && buffer[i + 3] == '_' && buffer[i + 4] == 'k' && buffer[i + 5] == 'e' && buffer[i + 6] == 'y') {
       api = true;
       break;
     }
@@ -109,34 +118,28 @@ bool apiParse(char* jSonBuffer) {
   }
 
   i += 10;
-  j = i;
-
-  while (jSonBuffer[j] != '"') {
-    j++;
-  }
 
   //Set API-KEY
-  for (index = i; index < j; index++) {
-    jSonBuffer[arrayIndex] = jSonBuffer[index];
+  for (index = i; index < i + 40; index++) {
+    buffer[arrayIndex] = buffer[index];
     arrayIndex++;
   }
-  for (i = 40; i < 128; i++) {
-    jSonBuffer[i] = '\0';
-  }
+
+  buffer[40] = '\0';
+
   return api;
 }
 
 //IVEN CODE PARSER FUNCTION
-bool ivenCodeParse(char* jSonBuffer) {
-  char ivenCode[5];
+bool parseIvenCode(char* buffer) 
+{
   int i = 0;
-  int j = 0;
   int index;
   int arrayIndex = 0;
   bool code = false;
   long startTime = millis();
   while (millis() - startTime < 5000) {
-    if (jSonBuffer[i] == 'i' && jSonBuffer[i + 1] == 'v' && jSonBuffer[i + 2] == 'e' && jSonBuffer[i + 3] == 'n' && jSonBuffer[i + 4] == 'C' && jSonBuffer[i + 5] == 'o' && jSonBuffer[i + 6] == 'd' && jSonBuffer[i + 7] == 'e') {
+    if (buffer[i] == 'i' && buffer[i + 1] == 'v' && buffer[i + 2] == 'e' && buffer[i + 3] == 'n' && buffer[i + 4] == 'C' && buffer[i + 5] == 'o' && buffer[i + 6] == 'd' && buffer[i + 7] == 'e') {
       code = true;
       break;
     }
@@ -144,44 +147,37 @@ bool ivenCodeParse(char* jSonBuffer) {
   }
 
   i += 10;
-  j = i;
 
-  while (jSonBuffer[j] != '}') {
-    j++;
-  }
-
-  for (index = i; index < j; index++) {
-    ivenCode[arrayIndex] = jSonBuffer[index];
+  for (index = i; index < i + 4; index++) {
+    buffer[arrayIndex] = buffer[index];
     arrayIndex++;
   }
-  ivenCode[4] = '\0';
+  buffer[4] = '\0';
 
-  if (ivenCode[0] == '1' && ivenCode[1] == '0' && ivenCode[2] == '0' && ivenCode[3] == '0') {
+  if (buffer[0] == '1' && buffer[1] == '0' && buffer[2] == '0' && buffer[3] == '0') {
     Serial.print(F("Iven Code: "));
-    Serial.println(ivenCode);
+    Serial.println(buffer);
   } else {
     Serial.print(F("Iven Code: "));
-    Serial.println(ivenCode);
+    Serial.println(buffer);
   }
 
-  for (i = 0; i < 128; i++) {
-    jSonBuffer[i] = '\0';
-  }
   return code;
-
 }
 
 //IVEN TCP CONNECTION FUNCTION
-void tcpConnectIven(SoftwareSerial& _client, char* jSonBuffer) 
+void connectIvenTCP(SoftwareSerial& client, char* buffer) 
 {
-    _client.println(F("AT+CIPCLOSE"));
+    client.println(F("AT+CIPCLOSE"));
     long startTime = millis();
-    while (millis() - startTime < 3000) _client.read(); // Flush Software Serial
-    _client.print(F("AT+CIPSTART=\"TCP\",\""));
-    _client.print(server);
-    _client.print("\",");
-    _client.println(port);
-    if (!isOk(_client, jSonBuffer)) returnSetup(_client);
+    while (millis() - startTime < 3000) 
+      client.read(); // Flush Software Serial
+    client.print(F("AT+CIPSTART=\"TCP\",\""));
+    client.print(server);
+    client.print("\",");
+    client.println(port);
+    if (!isOk(client, buffer)) 
+      returnSetup(client);
 }
 
 
@@ -197,20 +193,20 @@ void createActivationCode(const char* secretKey, const char* deviceId, char* act
     j = 0;
     for (i=0; i<20; i++)
     {
-        activationCode[j] = "0123456789abcdef"[hash[i]>>4];
-        activationCode[j + 1] = "0123456789abcdef"[hash[i]&0xf];
-        j += 2;
+      activationCode[j] = "0123456789abcdef"[hash[i]>>4];
+      activationCode[j + 1] = "0123456789abcdef"[hash[i]&0xf];
+      j += 2;
     }
     activationCode[40] = '\0';
 }
 
-void sendDataRequest(SoftwareSerial& _client, IvenData* data, const char* apiKey)
+void sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
 {   
-    char jSonBuffer[128];
+    char buffer[128];
     // Connect (make tcp connection)
-    tcpConnectIven(_client, jSonBuffer);
+    connectIvenTCP(client, buffer);
 
-    //Calculate CIPSEND length and put it in a string
+    //Calculate CIPSEND length for TCP connection.
     char* jSonData = data->toJson();
     int cipSend = 215;
     int contentLength = 1;
@@ -228,46 +224,55 @@ void sendDataRequest(SoftwareSerial& _client, IvenData* data, const char* apiKey
     String atCipSend = "AT+CIPSEND=";
     atCipSend += chipSendStr;
 
-    _client.println(atCipSend);
-    if (!isOk(_client, jSonBuffer)) returnSetup(_client);
+    client.println(atCipSend);
+    if (!isOk(client, buffer)) 
+      returnSetup(client);
 
-    _client.println(F("POST /data HTTP/1.1"));
-    _client.println(F("Host: demo.iven.io"));
-    _client.print(F("Connection: keep-alive\r\n"));
-    _client.println(F("Accept-Encoding: gzip, deflate"));
-    _client.println(F("Accept: */*"));
-    _client.println(F("Content-Type: application/json"));
-    _client.print(F("API-KEY: "));
-    _client.println(apiKey);
-    _client.print(F("Content-Length: "));
-    _client.println(strlen(jSonData));
-    _client.println();
-    _client.println(jSonData);
+    client.println(F("POST /data HTTP/1.1"));
+    client.print(F("Host: "));
+    client.println(server);
+    client.print(F("Connection: keep-alive\r\n"));
+    client.println(F("Accept-Encoding: gzip, deflate"));
+    client.println(F("Accept: */*"));
+    client.println(F("Content-Type: application/json"));
+    client.print(F("API-KEY: "));
+    client.println(apiKey);
+    client.print(F("Content-Length: "));
+    client.println(strlen(jSonData));
+    client.println();
+    client.println(jSonData);
 
     // Read response
-    responseHandle(_client, jSonBuffer);
-    if (!ivenCodeParse(jSonBuffer)) returnSetup(_client);
+    handleResponse(client, buffer);
+
+    // Parse ivenCode
+    if (!parseIvenCode(buffer)) 
+      returnSetup(client);
 }
 
-void activationRequest(SoftwareSerial& _client, char* activationCode, char* jSonBuffer)
+void activationRequest(SoftwareSerial& client, char* activationCode, char* buffer)
 {
     // Connect (make tcp connection)
-    tcpConnectIven(_client, jSonBuffer);
+    connectIvenTCP(client, buffer);
     
     // Make request
-    _client.println(F("AT+CIPSEND=107"));
-    if (!isOk(_client, jSonBuffer)) returnSetup(_client);
+    client.println(F("AT+CIPSEND=107"));
+    if (!isOk(client, buffer)) 
+      returnSetup(client);
 
-    _client.println(F("GET /activate/device HTTP/1.1"));
-    _client.print(F("Host: "));
-    _client.println(server);
-    _client.print(F("Activation: "));
-    _client.println(activationCode);
-    _client.println();
+    client.println(F("GET /activate/device HTTP/1.1"));
+    client.print(F("Host: "));
+    client.println(server);
+    client.print(F("Activation: "));
+    client.println(activationCode);
+    client.println();
     
     // Read response
-    responseHandle(_client, jSonBuffer);
-    if(!apiParse(jSonBuffer)) returnSetup(_client);
+    handleResponse(client, buffer);
+
+    // Parse API-KEY
+    if (!parseApiKey(buffer)) 
+      returnSetup(client);
 }
 
 /***********************************************/
@@ -275,7 +280,8 @@ void activationRequest(SoftwareSerial& _client, char* activationCode, char* jSon
 /***********************************************/
 
 // Constructor
-IvenCloudESP::IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx) : _client(arduino_rx_esp_tx, arduino_tx_esp_rx)
+IvenCloudESP::IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx) :
+     _client(arduino_rx_esp_tx, arduino_tx_esp_rx), _apiKey()
 {
     // init esp serial
     _client.begin(9600);
@@ -291,14 +297,11 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
 
     // create activation code as hex string
     char activationCode[41];
-    char jSonBuffer[128];
+    char buffer[128];
     createActivationCode(secretKey, deviceId, activationCode);
-    activationRequest(_client, activationCode, jSonBuffer);
+    activationRequest(_client, activationCode, buffer);
 
-    int i;
-    for (i = 0; i < 40; i++) {
-      _apiKey += jSonBuffer[i];
-    }
+    _apiKey.concat(buffer);
 
     Serial.print("API-KEY is: ");
     Serial.println(_apiKey);
@@ -316,4 +319,3 @@ IvenResponse IvenCloudESP::sendData(IvenData& sensorData)
 
     return IR_OK;
 }
-

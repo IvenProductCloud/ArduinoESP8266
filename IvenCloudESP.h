@@ -38,9 +38,9 @@ public:
     IvenResponse sendData(IvenData& sensorData);
 private:
     SoftwareSerial _client;
-    char _apiKey[41];
-    char jSonBuffer[128];
+    String _apiKey;
 };
+
 
 
 #endif //PROJECT_IVENCLOUDESP_H

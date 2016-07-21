@@ -5,31 +5,28 @@
 
 #include "IvenCloudESP.h"
 
-//char IvenCloudESP::_apiKey[41];
-//char jSonBuffer[128];
-
 /***********************************************/
 /*********     HELPER FUNCTIONS      ***********/
 /***********************************************/
 
 // Checks if ESP software serial response contains OK
 
-bool isOk(SoftwareSerial& _client) {
-    Serial.println("in isOk()");
-  char okBuff[64];
+bool isOk(SoftwareSerial& _client, char* jSonBuffer) {
   bool check = false;
   int i = 0;
   long startTime = millis();
   while (millis() - startTime < 5000) { 
     if (_client.available()) {
-      okBuff[i] = _client.read();
-      if (okBuff[i - 1] == 'O' && okBuff[i] == 'K') {
+      jSonBuffer[i] = _client.read();
+      if (jSonBuffer[i - 1] == 'O' && jSonBuffer[i] == 'K') {
         check = true;
         break;
       }
       i++;
     }
   }
+  while (_client.available()) _client.read();
+  for (i = 0; i < 128; i++) jSonBuffer[i] = '\0';
   return check;
 }
 
@@ -75,7 +72,6 @@ void responseHandle(SoftwareSerial& _client, char* jSonBuffer) {
             i++;
           }
         }
-        Serial.println(jSonBuffer);
         j = strtoul(jSonBuffer, 0, 16);
         i = 0;
         while (i != j) {
@@ -84,7 +80,6 @@ void responseHandle(SoftwareSerial& _client, char* jSonBuffer) {
             i++;
           }
         }
-        Serial.println(jSonBuffer);
         for (index = j; index < 128; index++) {
           jSonBuffer[j] = '\0';
         }
@@ -98,7 +93,7 @@ void responseHandle(SoftwareSerial& _client, char* jSonBuffer) {
 
 
 //API-KEY PARSER FUNCTION
-bool apiParse(char* apiKey, char* jSonBuffer) {
+bool apiParse(char* jSonBuffer) {
   int i = 0;
   int j = 0;
   int index;
@@ -122,13 +117,10 @@ bool apiParse(char* apiKey, char* jSonBuffer) {
 
   //Set API-KEY
   for (index = i; index < j; index++) {
-    apiKey[arrayIndex] = jSonBuffer[index];
+    jSonBuffer[arrayIndex] = jSonBuffer[index];
     arrayIndex++;
   }
-
-  apiKey[41] = '\0';
-
-  for (i = 0; i < 128; i++) {
+  for (i = 40; i < 128; i++) {
     jSonBuffer[i] = '\0';
   }
   return api;
@@ -162,14 +154,13 @@ bool ivenCodeParse(char* jSonBuffer) {
     ivenCode[arrayIndex] = jSonBuffer[index];
     arrayIndex++;
   }
-  ivenCode[arrayIndex] = '\0';
+  ivenCode[4] = '\0';
 
   if (ivenCode[0] == '1' && ivenCode[1] == '0' && ivenCode[2] == '0' && ivenCode[3] == '0') {
-    Serial.print("Iven Code: ");
+    Serial.print(F("Iven Code: "));
     Serial.println(ivenCode);
-    Serial.print("Succesful count: ");
   } else {
-    Serial.print("Iven Code: ");
+    Serial.print(F("Iven Code: "));
     Serial.println(ivenCode);
   }
 
@@ -181,7 +172,7 @@ bool ivenCodeParse(char* jSonBuffer) {
 }
 
 //IVEN TCP CONNECTION FUNCTION
-void tcpConnectIven(SoftwareSerial& _client) 
+void tcpConnectIven(SoftwareSerial& _client, char* jSonBuffer) 
 {
     _client.println(F("AT+CIPCLOSE"));
     long startTime = millis();
@@ -190,15 +181,11 @@ void tcpConnectIven(SoftwareSerial& _client)
     _client.print(server);
     _client.print("\",");
     _client.println(port);
-    if (!isOk(_client)) returnSetup(_client);
+    if (!isOk(_client, jSonBuffer)) returnSetup(_client);
 }
 
-void cipSendClient(SoftwareSerial& _client) {
-    _client.println(F("AT+CIPSEND=107"));
-    if (!isOk(_client)) returnSetup(_client);
-}
 
-int createActivationCode(const char* secretKey, const char* deviceId, char* activationCode)
+void createActivationCode(const char* secretKey, const char* deviceId, char* activationCode)
 {
     uint8_t* hash;
     ShaClass Sha1;
@@ -214,15 +201,14 @@ int createActivationCode(const char* secretKey, const char* deviceId, char* acti
         activationCode[j + 1] = "0123456789abcdef"[hash[i]&0xf];
         j += 2;
     }
-    activationCode[41] = '\0';
-
-    return 0;
+    activationCode[40] = '\0';
 }
 
-int sendDataRequest(SoftwareSerial& _client, IvenData* data, char* jSonBuffer, char* apiKey)
-{
+void sendDataRequest(SoftwareSerial& _client, IvenData* data, const char* apiKey)
+{   
+    char jSonBuffer[128];
     // Connect (make tcp connection)
-    tcpConnectIven(_client);
+    tcpConnectIven(_client, jSonBuffer);
 
     //Calculate CIPSEND length and put it in a string
     char* jSonData = data->toJson();
@@ -239,9 +225,11 @@ int sendDataRequest(SoftwareSerial& _client, IvenData* data, char* jSonBuffer, c
     String chipSendStr = String(cipSend);
 
     // Make request
-    _client.print(F("AT+CIPSEND="));
-    _client.println(chipSendStr);
-    if (!isOk(_client)) returnSetup(_client);
+    String atCipSend = "AT+CIPSEND=";
+    atCipSend += chipSendStr;
+
+    _client.println(atCipSend);
+    if (!isOk(_client, jSonBuffer)) returnSetup(_client);
 
     _client.println(F("POST /data HTTP/1.1"));
     _client.println(F("Host: demo.iven.io"));
@@ -261,12 +249,15 @@ int sendDataRequest(SoftwareSerial& _client, IvenData* data, char* jSonBuffer, c
     if (!ivenCodeParse(jSonBuffer)) returnSetup(_client);
 }
 
-int activationRequest(SoftwareSerial& _client, char* activationCode, char* apiKey, char* jSonBuffer)
+void activationRequest(SoftwareSerial& _client, char* activationCode, char* jSonBuffer)
 {
     // Connect (make tcp connection)
-    tcpConnectIven(_client);
+    tcpConnectIven(_client, jSonBuffer);
     
     // Make request
+    _client.println(F("AT+CIPSEND=107"));
+    if (!isOk(_client, jSonBuffer)) returnSetup(_client);
+
     _client.println(F("GET /activate/device HTTP/1.1"));
     _client.print(F("Host: "));
     _client.println(server);
@@ -276,7 +267,7 @@ int activationRequest(SoftwareSerial& _client, char* activationCode, char* apiKe
     
     // Read response
     responseHandle(_client, jSonBuffer);
-    if(!apiParse(apiKey, jSonBuffer)) returnSetup(_client);
+    if(!apiParse(jSonBuffer)) returnSetup(_client);
 }
 
 /***********************************************/
@@ -300,11 +291,17 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
 
     // create activation code as hex string
     char activationCode[41];
+    char jSonBuffer[128];
     createActivationCode(secretKey, deviceId, activationCode);
-    char* apiKey = _apiKey;
-    char* jsBuf = jSonBuffer;
-    activationRequest(_client, activationCode, apiKey, jsBuf);
+    activationRequest(_client, activationCode, jSonBuffer);
 
+    int i;
+    for (i = 0; i < 40; i++) {
+      _apiKey += jSonBuffer[i];
+    }
+
+    Serial.print("API-KEY is: ");
+    Serial.println(_apiKey);
 
     return IR_OK;
 }
@@ -312,14 +309,11 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
 // send data
 IvenResponse IvenCloudESP::sendData(IvenData& sensorData)
 {
-    if (_apiKey[0] == '\0' && _apiKey[1] == '\0' && _apiKey[2] == '\0')
+    if (_apiKey.length() == 0)
         return IR_ERROR;
 
-    char* jsBuf = jSonBuffer;
-    char* apiKey = _apiKey;
-    sendDataRequest(_client, &sensorData, jsBuf, apiKey);
+    sendDataRequest(_client, &sensorData, _apiKey.c_str());
 
     return IR_OK;
 }
-
 

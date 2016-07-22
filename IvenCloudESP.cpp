@@ -154,13 +154,6 @@ bool parseIvenCode(char* buffer)
   }
   buffer[4] = '\0';
 
-  if (buffer[0] == '1' && buffer[1] == '0' && buffer[2] == '0' && buffer[3] == '0') {
-    Serial.print(F("Iven Code: "));
-    Serial.println(buffer);
-  } else {
-    Serial.print(F("Iven Code: "));
-    Serial.println(buffer);
-  }
 
   return code;
 }
@@ -200,10 +193,10 @@ void createActivationCode(const char* secretKey, const char* deviceId, char* act
     activationCode[40] = '\0';
 }
 
-void sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
+int sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
 {   
     char buffer[128];
-    // Connect (make tcp connection)
+    // Connect (make TCP connection)
     connectIvenTCP(client, buffer);
 
     //Calculate CIPSEND length for TCP connection.
@@ -231,7 +224,7 @@ void sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
     client.println(F("POST /data HTTP/1.1"));
     client.print(F("Host: "));
     client.println(server);
-    client.print(F("Connection: keep-alive\r\n"));
+    client.println(F("Connection: keep-alive"));
     client.println(F("Accept-Encoding: gzip, deflate"));
     client.println(F("Accept: */*"));
     client.println(F("Content-Type: application/json"));
@@ -248,6 +241,9 @@ void sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
     // Parse ivenCode
     if (!parseIvenCode(buffer)) 
       returnSetup(client);
+
+  	return strtoul(buffer, 0, 10);
+
 }
 
 void activationRequest(SoftwareSerial& client, char* activationCode, char* buffer)
@@ -303,9 +299,6 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
 
     _apiKey.concat(buffer);
 
-    Serial.print("API-KEY is: ");
-    Serial.println(_apiKey);
-
     return IR_OK;
 }
 
@@ -315,7 +308,7 @@ IvenResponse IvenCloudESP::sendData(IvenData& sensorData)
     if (_apiKey.length() == 0)
         return IR_ERROR;
 
-    sendDataRequest(_client, &sensorData, _apiKey.c_str());
-
-    return IR_OK;
+    IvenResponse ivenCode = (IvenResponse)sendDataRequest(_client, &sensorData, _apiKey.c_str());
+    
+    return ivenCode;
 }

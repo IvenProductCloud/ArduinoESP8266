@@ -33,7 +33,7 @@ typedef enum ivenResponse_e {
 
 class IvenCloudESP {
 public:
-    IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx);
+    IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx, int baud_rate);
     IvenResponse activateDevice(const char* secretKey, const char* deviceId);
     IvenResponse sendData(IvenData& sensorData);
 private:

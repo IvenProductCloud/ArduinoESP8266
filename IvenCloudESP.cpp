@@ -285,11 +285,11 @@ void activationRequest(SoftwareSerial& client, char* activationCode)
 /***********************************************/
 
 // Constructor
-IvenCloudESP::IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx) :
+IvenCloudESP::IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx, int baud_rate) :
      _client(arduino_rx_esp_tx, arduino_tx_esp_rx), _apiKey()
 {
     // Initializes ESP Serial
-    _client.begin(9600);
+    _client.begin(baud_rate);
 }
 
 // Activates device on Iven cloud

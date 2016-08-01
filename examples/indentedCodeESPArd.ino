@@ -3,13 +3,14 @@
 #define lightPin 1
 #define arduino_rx_esp_tx 2
 #define arduino_tx_esp_rx 3
+#define esp_baud_rate 9600
 
 int sensorValue = 0;
 
 bool avail;
 bool isActive = false;
 
-IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx);
+IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx, esp_baud_rate);
 
 void setup() {
   // put your setup code here, to run once:

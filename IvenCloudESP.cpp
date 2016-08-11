@@ -4,6 +4,7 @@
 
 #include "IvenCloudESP.h"
 
+IvenResponse IvenCloudESP::response;
 char buffer[128];
 /***********************************************/
 /*********     HELPER FUNCTIONS      ***********/
@@ -36,7 +37,7 @@ bool isOk(SoftwareSerial& client)
 }
 
 // Arduino and ESP reset function
-void returnSetup(SoftwareSerial& client) 
+void reset(SoftwareSerial& client) 
 {
   delay(1000);
   client.println(F("AT+RST"));
@@ -45,9 +46,8 @@ void returnSetup(SoftwareSerial& client)
     if (client.available()) 
       client.read();
   }
-  startTime = millis();
 
-  while (millis() - startTime < 10000);
+  delay(10000);
 
   soft_restart();
 }
@@ -59,10 +59,21 @@ void handleResponse(SoftwareSerial& client)
   int j;
   int index;
   long startTime = millis();
-  while (millis() - startTime < 15000) {
+  while (millis() - startTime < 15000) { // todo: timeout parameter in initilazer
     if (client.available()) {
       buffer[i] = client.read();
-      if (buffer[i - 2] == '2' && buffer[i - 1] == '0' && buffer[i] == '0') {
+      if (buffer[i - 3] == '1' && buffer[i - 2] == '.' && buffer[i - 1] == '1' && buffer[i] == ' ') {
+        i = 0;
+        while (i != 3) {
+          if (client.available()) {
+            buffer[i] = client.read();
+            i++;
+          }
+        }
+        buffer[3] = '\0';
+        IvenCloudESP::response.status = strtoul(buffer, 0, 10);
+        if (IvenCloudESP::response.status > 500)
+          break;
         i = 0;
         while (!(buffer[i - 4] == '\r' && buffer[i - 3] == '\n' && buffer[i - 2] == '\r' && buffer[i - 1] == '\n')) {
           if (client.available()) {
@@ -94,7 +105,7 @@ void handleResponse(SoftwareSerial& client)
         break;
       }
       i++;
-      if (buffer[i - 1] != '2' && buffer[i - 1] != '0')
+      if (buffer[i - 1] != '1' && buffer[i - 1] != ' ')
       	i %= 64;
     }
   }
@@ -111,7 +122,8 @@ bool parseApiKey()
   bool api = false;
   long startTime = millis();
   while (millis() - startTime < 5000) {
-    if (buffer[i] == 'a' && buffer[i + 1] == 'p' && buffer[i + 2] == 'i' && buffer[i + 3] == '_' && buffer[i + 4] == 'k' && buffer[i + 5] == 'e' && buffer[i + 6] == 'y') {
+    if (buffer[i] == 'a' && buffer[i + 1] == 'p' && buffer[i + 2] == 'i' && buffer[i + 3] == '_' && 
+           buffer[i + 4] == 'k' && buffer[i + 5] == 'e' && buffer[i + 6] == 'y') {
       api = true;
       break;
     }
@@ -140,7 +152,8 @@ bool parseIvenCode()
   bool code = false;
   long startTime = millis();
   while (millis() - startTime < 5000) {
-    if (buffer[i] == 'i' && buffer[i + 1] == 'v' && buffer[i + 2] == 'e' && buffer[i + 3] == 'n' && buffer[i + 4] == 'C' && buffer[i + 5] == 'o' && buffer[i + 6] == 'd' && buffer[i + 7] == 'e') {
+    if (buffer[i] == 'i' && buffer[i + 1] == 'v' && buffer[i + 2] == 'e' && buffer[i + 3] == 'n' &&
+          buffer[i + 4] == 'C' && buffer[i + 5] == 'o' && buffer[i + 6] == 'd' && buffer[i + 7] == 'e') {
       code = true;
       break;
     }
@@ -159,19 +172,70 @@ bool parseIvenCode()
   return code;
 }
 
+// Task parser
+void parseTask()
+{
+  int i = 0;
+  int j;
+  int index;
+  int arrayIndex = 0;
+  bool task = false;
+  long startTime = millis();
+  while (millis() - startTime < 1000) {
+    if (buffer[i] == 't' && buffer[i + 1] == 'a' && buffer[i + 2] == 's' && buffer[i + 3] == 'k') {
+      task = true;
+      break;
+    }
+    i++;
+  }
+
+  if (!task)
+    return;
+
+  i += 7;
+  j = i;
+
+  while (buffer[j] != '"')
+    j++;
+
+  for (index = i; index < j; index++) {
+    buffer[arrayIndex] = buffer[index];
+    arrayIndex++;
+  }
+
+  buffer[arrayIndex] = '\0';
+
+  IvenCloudESP::response.task = "";
+
+  IvenCloudESP::response.task.concat(buffer);
+
+}
+
 // Iven TCP connection function
 void connectIvenTCP(SoftwareSerial& client) 
 {
     client.println(F("AT+CIPCLOSE"));
     long startTime = millis();
-    while (millis() - startTime < 3000) 
-      client.read(); // Flush Software Serial
+    while (millis() - startTime < 3000) {
+      int i = 0;
+      if (client.available()) {
+        buffer[i] = client.read();
+        if ((buffer[i - 1] == 'O' && buffer[i] == 'R' ) || (buffer[i - 1] == 'O' && buffer[i] == 'K')) {
+          break;
+        }
+        i++;
+      }
+    }
+
+    while(client.available())
+      client.read(); 
+     
     client.print(F("AT+CIPSTART=\"TCP\",\""));
     client.print(server);
     client.print("\",");
     client.println(port);
     if (!isOk(client)) 
-      returnSetup(client);
+      reset(client);
 }
 
 
@@ -194,21 +258,23 @@ void createActivationCode(const char* secretKey, const char* deviceId, char* act
     activationCode[40] = '\0';
 }
 
-int sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
+void sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
 {   
     // Connect (make TCP connection)
     connectIvenTCP(client);
 
     // Calculate CIPSEND length for TCP connection.
     char* jSonData = data->toJson();
-    int cipSend = 215;
+    int cipSend = 203 + strlen(server);
     int contentLength = 1;
     int jSonLength = strlen(jSonData);
     cipSend += jSonLength;
+
     while (jSonLength / 10 != 0) {
         jSonLength /= 10;
         contentLength++;
     }
+
     cipSend += contentLength;
 
     String cipSendStr = String(cipSend);
@@ -219,7 +285,7 @@ int sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
 
     client.println(atCipSend);
     if (!isOk(client)) 
-      returnSetup(client);
+      reset(client);
 
     client.println(F("POST /data HTTP/1.1"));
     client.print(F("Host: "));
@@ -240,9 +306,11 @@ int sendDataRequest(SoftwareSerial& client, IvenData* data, const char* apiKey)
 
     // Parse ivenCode
     if (!parseIvenCode()) 
-      returnSetup(client);
+      reset(client);
 
-  	return strtoul(buffer, 0, 10);
+    parseTask();
+
+  	IvenCloudESP::response.ivenCode = strtoul(buffer, 0, 10);
 
 }
 
@@ -263,7 +331,7 @@ void activationRequest(SoftwareSerial& client, char* activationCode)
     // Make request
     client.println(atCipSend);
     if (!isOk(client)) 
-      returnSetup(client);
+      reset(client);
 
     client.println(F("GET /activate/device HTTP/1.1"));
     client.print(F("Host: "));
@@ -277,7 +345,7 @@ void activationRequest(SoftwareSerial& client, char* activationCode)
 
     // Parse API-KEY
     if (!parseApiKey()) 
-      returnSetup(client);
+      reset(client);
 }
 
 /***********************************************/
@@ -295,10 +363,15 @@ IvenCloudESP::IvenCloudESP(int arduino_rx_esp_tx, int arduino_tx_esp_rx, int bau
 // Activates device on Iven cloud
 IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* deviceId)
 {
-    if (!secretKey || !deviceId)
-        return IR_ERROR_NULL_PARAMETER; // One or both of them are null
-    if (strlen(secretKey) != 40)
-        return IR_ERROR_INVALID_PARAMETER; // Secret key must be length of 40
+    if (!secretKey || !deviceId) {
+      IvenCloudESP::response.params = IR_ERROR_NULL_PARAMETER;
+      return IvenCloudESP::response;
+    }
+    if (strlen(secretKey) != 40) {
+      IvenCloudESP::response.params = IR_ERROR;
+      return IvenCloudESP::response;
+    }
+         
 
     // Creates activation code as hex string
     char activationCode[41];
@@ -307,16 +380,19 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
 
     _apiKey.concat(buffer);
 
-    return IR_OK;
+    IvenCloudESP::response.params = 0;
+    return response;
 }
 
 // Send data to Iven cloud
 IvenResponse IvenCloudESP::sendData(IvenData& sensorData)
 {
-    if (_apiKey.length() == 0)
-        return IR_ERROR;
+    if (_apiKey.length() == 0) {
+      IvenCloudESP::response.params = IR_ERROR;
+        return IvenCloudESP::response;
+    }
 
-    IvenResponse ivenCode = (IvenResponse)sendDataRequest(_client, &sensorData, _apiKey.c_str());
+    sendDataRequest(_client, &sensorData, _apiKey.c_str());
     
-    return ivenCode;
+    return IvenCloudESP::response;
 }

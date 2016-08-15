@@ -1,0 +1,6 @@
+IvenCloudESP	KEYWORD1
+IvenData	KEYWORD1
+IvenResponse	KEYWORD1
+add		KEYWORD2
+sendData	KEYWORD2
+activateDevice	KEYWORD2

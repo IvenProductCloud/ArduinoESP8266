@@ -1,9 +1,7 @@
-//
-// Created by berk ozdilek on 27/06/16.
-//
+// Created by Rıza Arda Kırmızıoğlu and Berk Özdilek 
 
 #include "IvenData.h"
-
+//default arg. member class
 IvenData::IvenData()
 {
     String();

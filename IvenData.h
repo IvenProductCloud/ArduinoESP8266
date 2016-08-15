@@ -1,6 +1,4 @@
-//
-// Created by berk ozdilek on 27/06/16.
-//
+// Created by Rıza Arda Kırmızıoğlu and Berk Özdilek 
 
 #ifndef PROJECT_IVENDATA_H
 #define PROJECT_IVENDATA_H

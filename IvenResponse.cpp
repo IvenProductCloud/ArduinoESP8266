@@ -5,7 +5,7 @@
 IvenResponse::IvenResponse() 
 {
     ivenCode = 0;
-    status = 0;
+    httpStatus = 0;
     error = IR_OK;
     task = "";
 }
@@ -13,7 +13,7 @@ IvenResponse::IvenResponse()
 IvenResponse::clearResponse()
 {
     ivenCode = 0;
-    status = 0;
+    httpStatus = 0;
     error = IR_OK;
     task = "";
 }

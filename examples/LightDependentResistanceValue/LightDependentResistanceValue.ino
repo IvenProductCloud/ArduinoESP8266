@@ -8,18 +8,15 @@ settings of ESP8266 check blog: http://blog.iven.io
 
 #include <IvenCloudESP.h>
 
-// Analog read pin for LDR voltage value.
 #define lightPin 0
 
-// Software serial digital pins for Arduino to communicate with ESP8266
+// Serial communication pins of Arduino for ESP8266 (dont use 0 and 1; because Arduino uses it to communicate with computer)
 #define arduino_rx_esp_tx 2
 #define arduino_tx_esp_rx 3
 
-// Sensor voltage value (between 0-1023 for 5v and 0-675 for 3.3v)
 int sensorValue = 0;
 
-// 
-bool available;
+bool avail;
 bool isActive = false;
 
 IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx, 9600, true);
@@ -33,30 +30,22 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if (!isActive) {
-
-  	// Activates device, has API-KEY and returns IvenResponse object.
     IvenResponse i = client.activateDevice("secret_key", "device_uid");
-    
-    Serial.println(i.status);
-    if (i.status == 200)
+    Serial.println(i.httpStatus);
+    if (i.httpStatus == 200)
       isActive = true;
       Serial.println("api-key is taken");
   } else {
-  	// Creates IvenData object
     IvenData data;
-
     sensorValue = analogRead(lightPin);
     if (sensorValue < 400) 
-      available = true;
-    else available = false;
-
-    // Creates json object for the body of the HTTP POST request.
-    data.add("available", available);
-
-    // Posts data to Iven Product Cloud
+      avail = true;
+    else avail = false;
+    data.add("available", avail);
+    if (avail)
+      data.taskDone(5555);
     IvenResponse p = client.sendData(data);
-
-    Serial.println(p.status);
+    Serial.println(p.httpStatus);
     Serial.println(p.ivenCode);
     Serial.println(p.task);
   }

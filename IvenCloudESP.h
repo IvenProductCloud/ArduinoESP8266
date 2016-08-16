@@ -1,5 +1,11 @@
 // Created by Rıza Arda Kırmızıoğlu and Berk Özdilek
 
+/*
+IvenCloudESP is an Arduino library to connect Arduino boards to Iven Product Cloud by using ESP8266 with serial communication.
+Checkout the examples folder to see examples.
+Further examples and guides can be found in iven blog : http://blog.iven.io
+*/
+
 #ifndef PROJECT_IVENCLOUDESP_H
 #define PROJECT_IVENCLOUDESP_H
 
@@ -15,8 +21,14 @@
 
 class IvenCloudESP {
 public:
+    /* Creates IvenCloudESP object and initilazes RX/TX pins of Arduino for communication with ESP8266,
+    sets baud rate and sets automatic reset function for IoT projects*/
     IvenCloudESP(uint8_t arduino_rx_esp_tx, uint8_t arduino_tx_esp_rx, int baud_rate, bool systemReset = true);
+
+    // Activates device, saves API-KEY into object and returns IvenResponse object for observation.
     IvenResponse activateDevice(const char* secretKey, const char* deviceId);
+
+    // Posts data to Iven Product Cloud by using API-KEY and returns IvenResponse object for observation.
     IvenResponse sendData(IvenData& sensorData);
     
 private:

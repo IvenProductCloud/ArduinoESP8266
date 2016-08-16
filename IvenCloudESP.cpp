@@ -5,11 +5,12 @@
 IvenResponse IvenCloudESP::response;
 uint8_t i, j, index, arrayIndex;
 long startTime;
+
 /***********************************************/
-/*********     HELPER FUNCTIONS      ***********/
+/*********  PRIVATE HELPER FUNCTIONS ***********/
 /***********************************************/
 
-// _checks if ESP software serial response contains OK
+// Checks if ESP software serial response contains OK
 bool IvenCloudESP::isOk() 
 {
   _check = false;
@@ -53,7 +54,7 @@ void IvenCloudESP::reset()
 }
 
 
-// Server response parser function
+// Parses header of the server response
 bool IvenCloudESP::handleResponseHeader() 
 {
   i = 0;
@@ -71,8 +72,8 @@ bool IvenCloudESP::handleResponseHeader()
           }
         }
         buffer[3] = '\0';
-        IvenCloudESP::response.status = strtoul(buffer, 0, 10);
-        if (IvenCloudESP::response.status > 500)
+        IvenCloudESP::response.httpStatus = strtoul(buffer, 0, 10);
+        if (IvenCloudESP::response.httpStatus > 500)
           return false;
         i = 0;
         while (!(buffer[i - 4] == '\r' && buffer[i - 3] == '\n' && buffer[i - 2] == '\r' && buffer[i - 1] == '\n')) {
@@ -86,7 +87,7 @@ bool IvenCloudESP::handleResponseHeader()
         buffer[i] = '\0';
         i = 0;
         buffer[4] = '\0';
-        while (i != 4) {
+        while (i != 4) { // timeout ?¿?
           if (_client.available()) {
             buffer[i] = _client.read();
             i++;
@@ -214,7 +215,7 @@ void IvenCloudESP::connectIvenTCP()
       reset();
 }
 
-
+// Creates activation code to have api-key from server.
 void IvenCloudESP::createActivationCode(const char* secretKey, const char* deviceId, char* activationCode)
 {
     uint8_t* hash;
@@ -312,6 +313,7 @@ void IvenCloudESP::activationRequest(char* activationCode)
     _client.println(activationCode);
     _client.println();
     
+    free(activationCode);
     // Read response
     if (handleResponseHeader()) {
 
@@ -350,7 +352,8 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
       return IvenCloudESP::response;
     }
          
-    char activationCode[41];
+    char* activationCode = malloc(41*sizeof(char));
+
     // Creates activation code as hex string
     createActivationCode(secretKey, deviceId, activationCode);
     activationRequest(activationCode);

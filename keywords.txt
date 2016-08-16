@@ -4,3 +4,4 @@ IvenResponse	KEYWORD1
 add		KEYWORD2
 sendData	KEYWORD2
 activateDevice	KEYWORD2
+taskDone	KEYWORD2

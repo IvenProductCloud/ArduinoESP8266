@@ -1,5 +1,8 @@
 // Created by Rıza Arda Kırmızıoğlu and Berk Özdilek 
-
+/*
+IvenResponse is a server response object class in which one can check the vital parts of 
+the server response and possible error codes while connecting a device to Iven Product Cloud.
+*/
 #ifndef PROJECT_IVENRESPONSE_H
 #define PROJECT_IVENRESPONSE_H
 
@@ -19,7 +22,7 @@ public:
     IvenResponse();
     clearResponse();
     int ivenCode;
-    uint16_t status;
+    uint16_t httpStatus;
     ErrorList error;
     String task;
 };

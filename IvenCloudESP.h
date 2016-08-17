@@ -23,7 +23,7 @@ class IvenCloudESP {
 public:
     /* Creates IvenCloudESP object and initilazes RX/TX pins of Arduino for communication with ESP8266,
     sets baud rate and sets automatic reset function for IoT projects*/
-    IvenCloudESP(uint8_t arduino_rx_esp_tx, uint8_t arduino_tx_esp_rx, int baud_rate, bool systemReset = true);
+    IvenCloudESP(uint8_t arduino_rx_esp_tx, uint8_t arduino_tx_esp_rx, int baud_rate, bool systemReset = false);
 
     // Activates device, saves API-KEY into object and returns IvenResponse object for observation.
     IvenResponse activateDevice(const char* secretKey, const char* deviceId);
@@ -32,7 +32,7 @@ public:
     IvenResponse sendData(IvenData& sensorData);
     
 private:
-    static IvenResponse response;
+    IvenResponse response;
     SoftwareSerial _client;
     String _apiKey;
     char buffer[128];

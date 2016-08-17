@@ -14,6 +14,9 @@ typedef enum Error_e {
     IR_ERROR_INVALID_PARAMETER = 1,
     IR_ERROR_NULL_PARAMETER = 2,
     IR_ERROR = 3,
+    IR_CONNECTION_ERROR = 4,
+    IR_API_KEY_MISSING = 5,
+    IR_IVEN_CODE_MISSING = 6,
 } ErrorList;
 
 class IvenResponse

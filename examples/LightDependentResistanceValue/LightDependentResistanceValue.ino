@@ -45,6 +45,7 @@ void loop() {
     if (avail)
       data.taskDone(5555);
     IvenResponse p = client.sendData(data);
+    Serial.println(p.error);
     Serial.println(p.httpStatus);
     Serial.println(p.ivenCode);
     Serial.println(p.task);

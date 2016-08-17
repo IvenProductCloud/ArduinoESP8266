@@ -2,7 +2,7 @@
 
 #include "IvenData.h"
 
-IvenData::IvenData()
+IvenData::IvenData() : _task(false)
 {
     String();
 };
@@ -10,14 +10,11 @@ IvenData::IvenData()
 // Creates string data object for Iven Product Cloud.
 void IvenData::add(const char* key, const char* value)
 {
-    bool isFirst = true;
     if (len == 0)
     {
         concat("{\"data\":[{"); // }]}
-        isFirst = false;
     }
-
-    if (isFirst)
+    else
     {
         concat(',');
     }
@@ -32,14 +29,11 @@ void IvenData::add(const char* key, const char* value)
 // Creates integer data object for Iven Product Cloud.
 void IvenData::add(const char* key, int value)
 {
-    bool isFirst = true;
     if (len == 0)
     {
         concat("{\"data\":[{");
-        isFirst = false;
     }
-
-    if (isFirst)
+    else
     {
         concat(',');
     }
@@ -53,14 +47,11 @@ void IvenData::add(const char* key, int value)
 // Creates boolean data object for Iven Product Cloud.
 void IvenData::add(const char* key, boolean value)
 {
-    bool isFirst = true;
     if (len == 0)
     {
         concat("{\"data\":[{"); // }]}
-        isFirst = false;
     }
-
-    if (isFirst)
+    else
     {
         concat(',');
     }
@@ -68,8 +59,10 @@ void IvenData::add(const char* key, boolean value)
     concat('"');
     concat(key);
     concat("\":"); 
-    if (value) concat("true");
-    else concat("false");
+    if (value) 
+      concat("true");
+    else 
+      concat("false");
 }
 
 char* IvenData::print()

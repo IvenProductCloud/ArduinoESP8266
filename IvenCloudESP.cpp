@@ -2,7 +2,6 @@
 
 #include "IvenCloudESP.h"
 
-IvenResponse IvenCloudESP::response;
 uint8_t i, j, index, arrayIndex;
 long startTime;
 
@@ -54,7 +53,6 @@ void IvenCloudESP::reset()
 }
 
 
-// Parses header of the server response
 bool IvenCloudESP::handleResponseHeader() 
 {
   i = 0;
@@ -72,8 +70,8 @@ bool IvenCloudESP::handleResponseHeader()
           }
         }
         buffer[3] = '\0';
-        IvenCloudESP::response.httpStatus = strtoul(buffer, 0, 10);
-        if (IvenCloudESP::response.httpStatus > 500)
+        response.httpStatus = strtoul(buffer, 0, 10);
+        if (response.httpStatus > 500)
           return false;
         i = 0;
         while (!(buffer[i - 4] == '\r' && buffer[i - 3] == '\n' && buffer[i - 2] == '\r' && buffer[i - 1] == '\n')) {
@@ -87,7 +85,7 @@ bool IvenCloudESP::handleResponseHeader()
         buffer[i] = '\0';
         i = 0;
         buffer[4] = '\0';
-        while (i != 4) { // timeout ?¿?
+        while (i != 4) { 
           if (_client.available()) {
             buffer[i] = _client.read();
             i++;
@@ -165,11 +163,11 @@ bool IvenCloudESP::handleResponseBody()
       buffer[j] = '\0';
 
       // Set Iven Code
-      IvenCloudESP::response.ivenCode = strtoul((buffer + i), 0, 10);
+      response.ivenCode = strtoul((buffer + i), 0, 10);
     }
 
     if (buffer[i] == 't' && buffer[i + 1] == 'a' && buffer[i + 2] == 's' && buffer[i + 3] == 'k') {
-      IvenCloudESP::response.task = "";
+      response.task = "";
       i += 7;
       j = i;
 
@@ -178,7 +176,7 @@ bool IvenCloudESP::handleResponseBody()
 
       buffer[j] = '\0';
 
-      IvenCloudESP::response.task.concat((buffer + i));
+      response.task.concat((buffer + i));
     }
 
     i++;
@@ -211,8 +209,10 @@ void IvenCloudESP::connectIvenTCP()
     _client.print(server);
     _client.print("\",");
     _client.println(port);
-    if (!isOk()) 
+    if (!isOk()) {
+      response.error = IR_CONNECTION_ERROR;
       reset();
+    }
 }
 
 // Creates activation code to have api-key from server.
@@ -282,8 +282,10 @@ void IvenCloudESP::sendDataRequest(IvenData* data)
     if (handleResponseHeader()) {
 
       // Parse ivenCode
-      if (!handleResponseBody()) 
+      if (!handleResponseBody()) {
+        response.error = IR_IVEN_CODE_MISSING;
         reset();
+      }
 
     }
 }
@@ -313,7 +315,6 @@ void IvenCloudESP::activationRequest(char* activationCode)
     _client.println(activationCode);
     _client.println();
     
-    free(activationCode);
     // Read response
     if (handleResponseHeader()) {
 
@@ -331,6 +332,8 @@ void IvenCloudESP::activationRequest(char* activationCode)
 IvenCloudESP::IvenCloudESP(uint8_t arduino_rx_esp_tx, uint8_t arduino_tx_esp_rx, int baud_rate, bool systemReset) :
      _client(arduino_rx_esp_tx, arduino_tx_esp_rx), _apiKey()
 {
+    response = IvenResponse();
+
     // Initializes ESP Serial
     _client.begin(baud_rate);
 
@@ -341,39 +344,39 @@ IvenCloudESP::IvenCloudESP(uint8_t arduino_rx_esp_tx, uint8_t arduino_tx_esp_rx,
 // Activates device on Iven cloud
 IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* deviceId)
 {
-    IvenCloudESP::response.clearResponse();
+    response.clearResponse();
 
     if (!secretKey || !deviceId) {
-      IvenCloudESP::response.error = IR_ERROR_NULL_PARAMETER;
-      return IvenCloudESP::response;
+      response.error = IR_ERROR_NULL_PARAMETER;
+      return response;
     }
     if (strlen(secretKey) != 40) {
-      IvenCloudESP::response.error = IR_ERROR;
-      return IvenCloudESP::response;
+      response.error = IR_ERROR;
+      return response;
     }
          
-    char* activationCode = malloc(41*sizeof(char));
+    char activationCode[41];
 
     // Creates activation code as hex string
     createActivationCode(secretKey, deviceId, activationCode);
     activationRequest(activationCode);
 
-    IvenCloudESP::response.error = 0;
+    response.error = 0;
     return response;
 }
 
 // Send data to Iven cloud
 IvenResponse IvenCloudESP::sendData(IvenData& sensorData)
 {
-    IvenCloudESP::response.clearResponse();
+    response.clearResponse();
 
     if (_apiKey.length() == 0) {
-      IvenCloudESP::response.error = IR_ERROR;
+      response.error = IR_ERROR;
       
-      return IvenCloudESP::response;
+      return response;
     }
 
     sendDataRequest(&sensorData);
     
-    return IvenCloudESP::response;
+    return response;
 }

@@ -23,7 +23,7 @@ public:
     inline unsigned int length(void) const {return len;}
 
 private:
-	bool _task = false;
+	bool _task;
 private:
 	char* toJson();
 	friend class IvenCloudESP;

@@ -19,7 +19,7 @@ int sensorValue = 0;
 bool avail;
 bool isActive = false;
 
-IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx, 9600, true);
+IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx, 9600, false);
 
 void setup() {
   // put your setup code here, to run once:
@@ -30,11 +30,16 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if (!isActive) {
-    IvenResponse i = client.activateDevice("secret_key", "device_uid");
+    IvenResponse i = client.activateDevice("dasd", "asdasd");
+    Serial.println(i.error);
     Serial.println(i.httpStatus);
-    if (i.httpStatus == 200)
+    Serial.println(i.ivenCode);
+    Serial.println(i.task);
+    delay(1000);
+    if (i.httpStatus == 200) {
       isActive = true;
       Serial.println("api-key is taken");
+    }
   } else {
     IvenData data;
     sensorValue = analogRead(lightPin);

@@ -126,16 +126,13 @@ bool IvenCloudESP::parseApiKey()
     if (buffer[i] == 'a' && buffer[i + 1] == 'p' && buffer[i + 2] == 'i' && buffer[i + 3] == '_' && 
            buffer[i + 4] == 'k' && buffer[i + 5] == 'e' && buffer[i + 6] == 'y') {
       _check = true;
+      i += 10;
+      buffer[i + 40] = '\0';
+      _apiKey.concat((buffer + i));
       break;
     }
     i++;
   }
-
-  i += 10;
-
-  buffer[i + 40] = '\0';
-  // Set API-KEY
-  _apiKey.concat((buffer + i));
 
   return _check;
 }
@@ -319,8 +316,14 @@ void IvenCloudESP::activationRequest(char* activationCode)
     if (handleResponseHeader()) {
 
     // Parse API-KEY
-    if (!parseApiKey()) 
-      reset();
+      if (!parseApiKey()) {
+        if (!handleResponseBody()) {
+          response.error = IR_IVEN_CODE_MISSING;
+          reset();
+        } else {
+          response.error = IR_WRONG_ACTIVATION_CODE;
+        }
+      }
   }
 }
 
@@ -347,11 +350,11 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
     response.clearResponse();
 
     if (!secretKey || !deviceId) {
-      response.error = IR_ERROR_NULL_PARAMETER;
+      response.error = IR_NULL_PARAMETER;
       return response;
     }
     if (strlen(secretKey) != 40) {
-      response.error = IR_ERROR;
+      response.error = IR_INVALID_PARAMETER;
       return response;
     }
          
@@ -361,7 +364,6 @@ IvenResponse IvenCloudESP::activateDevice(const char* secretKey, const char* dev
     createActivationCode(secretKey, deviceId, activationCode);
     activationRequest(activationCode);
 
-    response.error = 0;
     return response;
 }
 
@@ -371,7 +373,7 @@ IvenResponse IvenCloudESP::sendData(IvenData& sensorData)
     response.clearResponse();
 
     if (_apiKey.length() == 0) {
-      response.error = IR_ERROR;
+      response.error = IR_API_KEY_MISSING;
       
       return response;
     }

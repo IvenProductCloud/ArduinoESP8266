@@ -23,7 +23,8 @@ class IvenResponse
 {
 public:
     IvenResponse();
-    clearResponse();
+    void clearResponse();
+public:
     int ivenCode;
     uint16_t httpStatus;
     ErrorList error;

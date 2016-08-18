@@ -30,7 +30,7 @@ void setup() {
 void loop() {
   // put your main code here, to run repeatedly:
   if (!isActive) {
-    IvenResponse i = client.activateDevice("dasd", "asdasd");
+    IvenResponse i = client.activateDevice("your_device_secret_key(40 characters)", "your_device_id(on the Iven Cloud)");
     Serial.println(i.error);
     Serial.println(i.httpStatus);
     Serial.println(i.ivenCode);

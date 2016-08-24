@@ -10,7 +10,7 @@ IvenResponse::IvenResponse()
     task = "";
 }
 
-IvenResponse::clearResponse()
+void IvenResponse::clearResponse()
 {
     ivenCode = 0;
     httpStatus = 0;

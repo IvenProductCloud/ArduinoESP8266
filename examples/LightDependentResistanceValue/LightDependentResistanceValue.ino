@@ -19,7 +19,7 @@ int sensorValue = 0;
 bool avail;
 bool isActive = false;
 
-IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx, 9600, false);
+IvenCloudESP client(arduino_rx_esp_tx, arduino_tx_esp_rx, 9600);
 
 void setup() {
   // put your setup code here, to run once:

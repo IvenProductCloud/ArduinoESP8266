@@ -15,7 +15,7 @@ Further examples and guides can be found in iven blog : http://blog.iven.io
 #include "IvenData.h"
 #include "IvenResponse.h"
 
-#define server "demo.iven.io"
+#define server "staging.iven.io"
 #define port "80"
 
 class IvenCloudESP {
